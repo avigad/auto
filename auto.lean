@@ -401,6 +401,14 @@ meta_definition find_rules {A : Type} (db : rule_database A) (key : name) : list
 rb_lmap.find db key
 
 
+/- attributes -/
+
+definition intro_rule_attr := ⦃caching_user_attribute,
+  name  := `intro_rule_attr,
+  desc  := "attribute for intro rules for auto",
+  Cache := list intro_rule,
+
+
 /- intro rules -/
 
 meta_definition apply_intro_rule (db : intro_rule_database) (max_subgoals : ℕ) (classical : bool) :
@@ -462,7 +470,7 @@ do hs ← local_context >>= collect_props,
 
 private definition elim_instance_mapp_args (motive major : ℕ) (emotive emajor : expr) :
   list (option expr) :=
-let diff := major - motive in
+have diff : nat, from major - motive,   -- TODO: replace with let!
 nat.rec_on major []
   (λ n l, if n = diff then some emotive :: l
           else if n = 0 then some emajor :: l else none :: l)
@@ -950,8 +958,8 @@ meta_definition force_all_core_aux (classical : bool) (use_simp : bool)
     (simp_lemmas : list expr)
     (final_check : tactic unit) (preprocessed_goals : list expr) :
   tactic unit :=
-let force_core_rec := force_all_core_aux classical use_simp idb edb nedb bidb bedb bnedb
-                                         simp_lemmas final_check in
+have force_core_rec : list expr → tactic unit, from force_all_core_aux classical use_simp idb edb nedb bidb bedb bnedb
+                                         simp_lemmas final_check,
 have process_goals_with_backtracking : list expr → tactic unit
      | []        := final_check   -- if it passes, we have success!
      | (g :: gs) :=
@@ -1001,20 +1009,22 @@ meta_definition clarify (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
-let idb := initialize_rule_database (standard_intro_rules ++ irules),
-    edb := initialize_rule_database (standard_elim_rules ++ erules),
-    nedb := initialize_rule_database (standard_nelim_rules ++ nerules) in
-clarify_core classical use_simp idb edb nedb simp_lemmas
+clarify_core classical use_simp
+  (initialize_rule_database (standard_intro_rules ++ irules))
+  (initialize_rule_database (standard_elim_rules ++ erules))
+  (initialize_rule_database (standard_nelim_rules ++ nerules))
+  simp_lemmas
 
 -- applies to first goal, applies only safe rules, always succeeds
 meta_definition safe (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
-let idb := initialize_rule_database (standard_intro_rules ++ irules),
-    edb := initialize_rule_database (standard_elim_rules ++ erules),
-    nedb := initialize_rule_database (standard_nelim_rules ++ nerules) in
-safe_core classical use_simp idb edb nedb simp_lemmas
+safe_core classical use_simp
+  (initialize_rule_database (standard_intro_rules ++ irules))
+  (initialize_rule_database (standard_elim_rules ++ erules))
+  (initialize_rule_database (standard_nelim_rules ++ nerules))
+  simp_lemmas
 
 -- applies safe to all goals
 meta_definition safe_all (classical : bool) (use_simp : bool)
@@ -1029,13 +1039,14 @@ meta_definition force (classical : bool) (use_simp : bool)
     (birules : list bintro_rule) (berules : list belim_rule) (bnerules : list belim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
-let idb := initialize_rule_database (standard_intro_rules ++ irules),
-    bidb := initialize_rule_database (standard_bintro_rules ++ birules),
-    edb := initialize_rule_database (standard_elim_rules ++ erules),
-    nedb := initialize_rule_database (standard_nelim_rules ++ nerules),
-    bedb := initialize_rule_database (standard_belim_rules ++ berules),
-    bnedb := initialize_rule_database (standard_bnelim_rules ++ bnerules) in
-force_core classical use_simp idb edb nedb bidb bedb bnedb simp_lemmas
+force_core classical use_simp
+  (initialize_rule_database (standard_intro_rules ++ irules))
+  (initialize_rule_database (standard_elim_rules ++ erules))
+  (initialize_rule_database (standard_nelim_rules ++ nerules))
+  (initialize_rule_database (standard_bintro_rules ++ birules))
+  (initialize_rule_database (standard_belim_rules ++ berules))
+  (initialize_rule_database (standard_bnelim_rules ++ bnerules))
+  simp_lemmas
 
 -- applies to all goals, always succeeds
 meta_definition auto (classical : bool) (use_simp : bool)
