@@ -69,7 +69,7 @@ end
 -/
 
 section
-variables (X : Type₁) (P Q R : X → Prop) (T : X → X → Prop) (a b : X)
+variables (X : Type) (P Q R : X → Prop) (T : X → X → Prop) (a b : X)
 
 /- auto -/
 

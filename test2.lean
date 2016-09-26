@@ -95,7 +95,7 @@ example (p : nat → Prop) (a b c : nat) : a = b → a = c → p b → p c := so
 example (p : Prop) (a b : nat) : a = b → p → p := by safe'
 
 -- safe should look for contradictions with constructors
-example (a : nat) : zero = succ a → a = a → false := sorry
+example (a : nat) : (0 : ℕ) = succ a → a = a → false := sorry
 example (p : Prop) (a b c : nat) : [a, b, c] = [] → p := sorry
 
 example (a b c : nat) : succ (succ a) = succ (succ b) → c = c := by ssafe'
@@ -108,8 +108,8 @@ example (a b c : Prop) : a ∧ false ∧ c ↔ false := by safe'
 example (a b c : Prop) : a ∨ false ∨ b ↔ b ∨ a := by safe'
 example : a ∧ not a ↔ false := by safe'
 example : a ∧ b ∧ true → b ∧ a := by safe'
-example (A : Type₁) (a₁ a₂ : A) : a₁ = a₂ →
-  (λ (B : Type₁) (f : A → B), f a₁) = (λ (B : Type₁) (f : A → B), f a₂) := by strong_simp
+example (A : Type) (a₁ a₂ : A) : a₁ = a₂ →
+  (λ (B : Type) (f : A → B), f a₁) = (λ (B : Type) (f : A → B), f a₂) := by strong_simp
 example (a : nat) : ¬ a = a → false := by strong_simp
 example (A : Type) (p : Prop) (a b c : A) : a = b → b ≠ a → p := sorry
 example (p q r s : Prop) : r ∧ s → p ∧ q → q ∧ p := by safe'
@@ -121,16 +121,16 @@ example (p q r : Prop) (a b : nat) : true → a = a → q → q → p → p := b
 example (a b : Prop) : a → b → a := by safe'
 example (p q : nat → Prop) (a b : nat) : p a → q b → ∃ x, p x := by auto'
 
-definition bnot (b : bool) : bool := bool.cond b ff tt
+-- definition bnot (b : bool) : bool := cond b ff tt
 
 -- these require cases
 example : ∀ b1 b2, b1 && b2 = ff ↔ (b1 = ff ∨ b2 = ff) := sorry
 example : ∀ b1 b2, b1 && b2 = tt ↔ (b1 = tt ∧ b2 = tt) := sorry
 example : ∀ b1 b2, b1 || b2 = ff ↔ (b1 = ff ∧ b2 = ff) := sorry
 example : ∀ b1 b2, b1 || b2 = tt ↔ (b1 = tt ∨ b2 = tt) := sorry
-example : ∀ b, bool.bnot b = tt ↔ b = ff := sorry
-example : ∀ b, bool.bnot b = ff ↔ b = tt := sorry
-example : ∀ b c, b = c ↔ ¬ (b = bool.bnot c) := sorry
+example : ∀ b, bnot b = tt ↔ b = ff := sorry
+example : ∀ b, bnot b = ff ↔ b = tt := sorry
+example : ∀ b c, b = c ↔ ¬ (b = bnot c) := sorry
 
 inductive and3 (a b c : Prop) : Prop
 | mk : a → b → c → and3
