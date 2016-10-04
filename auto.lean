@@ -402,6 +402,85 @@ meta def find_rules {A : Type} (db : rule_database A) (key : name) : list (rule_
 rb_lmap.find db key
 
 
+/- set up attributes -/
+
+meta def intro_rule_database_of_list_name (ns : list name) : tactic (intro_rule_database) :=
+do env ← get_env,
+   rule_list ← monad.forM ns (λ n, do
+      e ← mk_const n,
+      eval_expr intro_rule e),
+   return (initialize_rule_database rule_list)
+
+meta def intro_rule_attr : caching_user_attribute (intro_rule_database) :=
+{ name     := `auto.intro_rule,
+  descr    := "intro rule for tableau provers",
+  mk_cache := intro_rule_database_of_list_name,
+  dependencies := [] }
+
+run_command attribute.register ``intro_rule_attr
+
+meta def elim_rule_database_of_list_name (ns : list name) : tactic (elim_rule_database) :=
+do env ← get_env,
+   rule_list ← monad.forM ns (λ n, do
+      e ← mk_const n,
+      eval_expr elim_rule e),
+   return (initialize_rule_database rule_list)
+
+meta def elim_rule_attr : caching_user_attribute (elim_rule_database) :=
+{ name     := `auto.elim_rule,
+  descr    := "elim rule for tableau provers",
+  mk_cache := elim_rule_database_of_list_name,
+  dependencies := [] }
+
+run_command attribute.register ``elim_rule_attr
+
+meta def nelim_rule_attr : caching_user_attribute (elim_rule_database) :=
+{ name     := `auto.nelim_rule,
+  descr    := "negated elim rule for tableau provers",
+  mk_cache := elim_rule_database_of_list_name,
+  dependencies := [] }
+
+run_command attribute.register ``nelim_rule_attr
+
+meta def bintro_rule_database_of_list_name (ns : list name) : tactic (bintro_rule_database) :=
+do env ← get_env,
+   rule_list ← monad.forM ns (λ n, do
+      e ← mk_const n,
+      eval_expr bintro_rule e),
+   return (initialize_rule_database rule_list)
+
+meta def bintro_rule_attr : caching_user_attribute (bintro_rule_database) :=
+{ name     := `auto.bintro_rule,
+  descr    := "backtracking intro rule for tableau provers",
+  mk_cache := bintro_rule_database_of_list_name,
+  dependencies := [] }
+
+run_command attribute.register ``bintro_rule_attr
+
+meta def belim_rule_database_of_list_name (ns : list name) : tactic (belim_rule_database) :=
+do env ← get_env,
+   rule_list ← monad.forM ns (λ n, do
+      e ← mk_const n,
+      eval_expr belim_rule e),
+   return (initialize_rule_database rule_list)
+
+meta def belim_rule_attr : caching_user_attribute (belim_rule_database) :=
+{ name     := `auto.belim_rule,
+  descr    := "backtracking elim rule for tableau provers",
+  mk_cache := belim_rule_database_of_list_name,
+  dependencies := [] }
+
+run_command attribute.register ``belim_rule_attr
+
+meta def bnelim_rule_attr : caching_user_attribute (belim_rule_database) :=
+{ name     := `auto.bnelim_rule,
+  descr    := "backtracking negated elim rule for tableau provers",
+  mk_cache := belim_rule_database_of_list_name,
+  dependencies := [] }
+
+run_command attribute.register ``bnelim_rule_attr
+
+
 /- intro rules -/
 
 meta def apply_intro_rule (db : intro_rule_database) (max_subgoals : ℕ) (classical : bool) :
@@ -626,14 +705,17 @@ do ctx ← local_context,
 
 /- standard introduction rules -/
 
+@[auto.intro_rule]
 meta def true_intro_rule : intro_rule :=
 { key := ``true, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_intro ``true.intro }
 
+@[auto.intro_rule]
 meta def and_intro_rule : intro_rule :=
 { key := ``and, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_intro ``and.intro }
 
+@[auto.intro_rule]
 meta def or_classical_intro_rule : intro_rule :=
 { key := ``or, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_intro_then_intros ``or_classical_intro }
@@ -651,53 +733,58 @@ auto_intros_aux unit.star
 meta def deploy_intros : tactic unit :=
 auto_trace_step auto_intros (λ u, "applying intros")
 
+@[auto.intro_rule]
 meta def Pi_intro_rule : intro_rule :=
 { key := `pi, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_intros }
 
+@[auto.intro_rule]
 meta def not_intro_rule : intro_rule :=
 { key := ``not, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_intros }
 
+@[auto.intro_rule]
 meta def iff_intro_rule : intro_rule :=
 { key := ``iff, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_intro ``iff.intro }
 
-meta def standard_intro_rules : list intro_rule :=
-[true_intro_rule, and_intro_rule, or_classical_intro_rule, Pi_intro_rule, not_intro_rule,
-  iff_intro_rule]
 
 /- standard backtracking intro rules -/
 
+@[auto.bintro_rule]
 meta def or_intuit_bintro_rule : bintro_rule :=
 { key := ``or, num_subgoals := 2, classical := ff, intuit := tt,
     tac := deploy_bintro_choices [deploy_intro ``or.inl, deploy_intro ``or.inr] }
 
+@[auto.bintro_rule]
 meta def exists_bintro_rule : bintro_rule :=
 { key := ``Exists, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_bintro_choices [deploy_intro ``exists.intro, deploy_intro ``false.elim] }
 
-meta def standard_bintro_rules : list bintro_rule :=
-[or_intuit_bintro_rule, exists_bintro_rule]
 
 /- standard elimination rules -/
 
+@[auto.elim_rule]
 meta def and_elim_rule : elim_rule :=
 { key := ``and, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dests_at [(``and.left, 3), (``and.right, 3)] }
 
+@[auto.elim_rule]
 meta def iff_elim_rule : elim_rule :=
 { key := ``iff, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dests_at [(``iff.mp, 3), (``iff.mpr, 3)] }
 
+@[auto.elim_rule]
 meta def or_elim_rule : elim_rule :=
 { key := ``or, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_elim_at_safe ``or.elim 3 4 }
 
+@[auto.elim_rule]
 meta def false_elim_rule : elim_rule :=
 { key := ``false, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_elim_at ``false.elim 1 2 }
 
+@[auto.elim_rule]
 meta def exists_elim_rule : elim_rule :=
 { key := ``Exists, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_elim_at_safe ``exists.elim 3 4 }
@@ -730,6 +817,7 @@ do ht ← infer_type h >>= whnf_red,
                    deploy_dests_at [(``imp_of_or_imp_left, 4), (``imp_of_or_imp_right, 4)] h
                 else failed)
 
+@[auto.elim_rule]
 meta def imp_elim_rule : elim_rule :=
 { key := `pi, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_imp_elim_at }
@@ -742,6 +830,7 @@ do ht ← infer_type h >>= whnf_red,
      failed
      (deploy_elim_at ``imp_classical_elim 3 4 h)
 
+@[auto.elim_rule]
 meta def imp_classical_elim_rule : elim_rule :=
 { key := `pi, num_subgoals := 2, classical := tt, intuit := ff,
     tac := deploy_imp_classical_elim_at }
@@ -758,51 +847,54 @@ do ht ← infer_type h,
               s₂ ← expr_with_type_to_string h,
               return ("using contradiction, " ++ s₁ ++ " and " ++ s₂))
 
+@[auto.elim_rule]
 meta def not_elim_rule : elim_rule :=
 { key := `not, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_not_elim_at }
 
-meta def standard_elim_rules : list elim_rule :=
-[and_elim_rule, or_elim_rule, false_elim_rule, exists_elim_rule, imp_elim_rule,
-  imp_classical_elim_rule, not_elim_rule, iff_elim_rule]
 
 /- elimination rules for negated formulas -/
 
+@[auto.nelim_rule]
 meta def not_true_elim_rule : elim_rule :=
 { key := ``true, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_elim_at ``not_true_elim 1 2 }
 
+@[auto.nelim_rule]
 meta def not_or_elim_rule : elim_rule :=
 { key := ``or, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dests_at [(``not_of_not_or_left, 3), (``not_of_not_or_right, 3)] }
 
+@[auto.nelim_rule]
 meta def not_and_elim_rule : elim_rule :=
 { key := ``and, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_dest_at ``not_or_not_of_not_and 3 }
 
+@[auto.nelim_rule]
 meta def not_imp_elim_rule : elim_rule :=
 { key := `pi, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_dests_at [(``of_not_imp, 3), (``not_of_not_imp, 3)] }
 
+@[auto.nelim_rule]
 meta def not_not_elim_rule : elim_rule :=
 { key := ``not, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_dest_at ``not_not_dest 2 }
 
+@[auto.nelim_rule]
 meta def not_not_not_elim_rule : elim_rule :=
 { key := ``not, num_subgoals := 1, classical := ff, intuit := tt,
     tac := deploy_dest_at ``not_not_not_dest 2 }
 
+@[auto.nelim_rule]
 meta def not_iff_elim_rule : elim_rule :=
 { key := ``iff, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dest_at ``not_iff 3 }
 
+@[auto.nelim_rule]
 meta def not_exists_elim_rule : elim_rule :=
 { key := ``Exists, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dest_at ``forall_not_of_not_exists 3 }
 
-meta def standard_nelim_rules : list elim_rule :=
-[not_true_elim_rule, not_or_elim_rule, not_and_elim_rule, not_imp_elim_rule,
- not_not_elim_rule, not_not_not_elim_rule, not_iff_elim_rule, not_exists_elim_rule]
 
 /- standard backtracking elim rules -/
 
@@ -812,6 +904,7 @@ do ht ← infer_type h >>= whnf_red,
    if dt ≠ prop then failed
    else deploy_belim_choices [deploy_elim_at ``imp_intuit_elim 3 4, deploy_clear_at] h cont
 
+@[auto.belim_rule]
 meta def imp_intuit_belim_rule : belim_rule :=
 { key := `pi, num_subgoals := 2, classical := ff, intuit := tt,
     tac := deploy_imp_intuit_belim_at }
@@ -820,17 +913,15 @@ meta def imp_intuit_belim_rule : belim_rule :=
 --{ key := `pi, num_subgoals := 2, classical := tt, intuit := ff,
 --    tac := deploy_belim_choices [deploy_clear_at, deploy_imp_classical_elim_at] }
 
+@[auto.belim_rule]
 meta def or_belim_rule : belim_rule :=
 { key := `or, num_subgoals := 2, classical := ff, intuit := tt,
     tac := deploy_belim_choices [deploy_clear_at, deploy_elim_at ``or.elim 3 4] }
 
-meta def standard_belim_rules : list belim_rule :=
-[imp_intuit_belim_rule, or_belim_rule]
 
 /- standard backtracking negated elim rules -/
 
-meta def standard_bnelim_rules : list belim_rule := []
-
+-- none yet
 
 /- backtracking assumption tactic -/
 
@@ -1015,25 +1106,34 @@ do auto_trace_step skip (λ u, ">>> entering force"),
 
 /- front ends -/
 
+/-
+-- TODO: a temporary hack: using trace_option to declare a boolean option
+declare_trace auto.classical
+set_option trace.auto.classical true
+
+declare_trace auto.use_simp
+set_option trace.auto.use_simp false
+-/
+
 -- applies to first goal, never splits it, applies only safe rules, always succeeds
 meta def clarify (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
-let idb := initialize_rule_database (standard_intro_rules ++ irules),
-    edb := initialize_rule_database (standard_elim_rules ++ erules),
-    nedb := initialize_rule_database (standard_nelim_rules ++ nerules) in
-clarify_core classical use_simp idb edb nedb simp_lemmas
+do idb ← caching_user_attribute.get_cache intro_rule_attr,
+   edb ← caching_user_attribute.get_cache elim_rule_attr,
+   nedb ← caching_user_attribute.get_cache nelim_rule_attr,
+   clarify_core classical use_simp idb edb nedb simp_lemmas
 
 -- applies to first goal, applies only safe rules, always succeeds
 meta def safe (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
-let idb := initialize_rule_database (standard_intro_rules ++ irules),
-    edb := initialize_rule_database (standard_elim_rules ++ erules),
-    nedb := initialize_rule_database (standard_nelim_rules ++ nerules) in
-safe_core classical use_simp idb edb nedb simp_lemmas unit.star
+do idb ← caching_user_attribute.get_cache intro_rule_attr,
+   edb ← caching_user_attribute.get_cache elim_rule_attr,
+   nedb ← caching_user_attribute.get_cache nelim_rule_attr,
+   safe_core classical use_simp idb edb nedb simp_lemmas unit.star
 
 -- applies safe to all goals
 meta def safe_all (classical : bool) (use_simp : bool)
@@ -1048,13 +1148,13 @@ meta def force (classical : bool) (use_simp : bool)
     (birules : list bintro_rule) (berules : list belim_rule) (bnerules : list belim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
-let idb := initialize_rule_database (standard_intro_rules ++ irules),
-    bidb := initialize_rule_database (standard_bintro_rules ++ birules),
-    edb := initialize_rule_database (standard_elim_rules ++ erules),
-    nedb := initialize_rule_database (standard_nelim_rules ++ nerules),
-    bedb := initialize_rule_database (standard_belim_rules ++ berules),
-    bnedb := initialize_rule_database (standard_bnelim_rules ++ bnerules) in
-force_core classical use_simp idb edb nedb bidb bedb bnedb simp_lemmas
+do idb ← caching_user_attribute.get_cache intro_rule_attr,
+   edb ← caching_user_attribute.get_cache elim_rule_attr,
+   nedb ← caching_user_attribute.get_cache nelim_rule_attr,
+   bidb ← caching_user_attribute.get_cache bintro_rule_attr,
+   bedb ← caching_user_attribute.get_cache belim_rule_attr,
+   bnedb ← caching_user_attribute.get_cache bnelim_rule_attr,
+   force_core classical use_simp idb edb nedb bidb bedb bnedb simp_lemmas
 
 -- applies to all goals, always succeeds
 meta def auto (classical : bool) (use_simp : bool)

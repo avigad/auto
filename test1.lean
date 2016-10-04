@@ -25,6 +25,7 @@ variables A B C D : Prop
 /- clarify -/
 
 example (H : ¬ A) (H' : A) : C := by clarify'
+
 example (H₁ : A ∧ A ∧ B) (H₂ : A ∧ C ∧ B) : A := by clarify'
 
 /- safe -/
