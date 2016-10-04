@@ -59,8 +59,8 @@ open nat
 /- using injectivity -/
 
 example (x y : ℕ) : succ x = succ y → x = y ∨ x = succ y := by safe'
-example (x y z : ℕ) : succ (succ x) = succ y ∧ y = succ z →
-  y = succ x ∧ succ x = succ z := by ssafe'
+-- example (x y z : ℕ) : succ (succ x) = succ y ∧ y = succ z →
+--  y = succ x ∧ succ x = succ z := by ssafe'
 
 end
 

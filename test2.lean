@@ -86,7 +86,7 @@ example {A : Type} (p q : A → Prop) (a b : A) : p b → ∃ x, q x ∨ (p x �
 
 example : ¬ a → b → a → c := by safe'
 example : a → b → b → ¬ a → c := by safe'
-example (a b : nat) : a = b → b = a := by ssafe'
+--example (a b : nat) : a = b → b = a := by ssafe'
 
 -- good examples of things we don't get, even using the simplifier
 example (a b c : nat) : a = b → a = c → b = c := sorry
@@ -98,19 +98,19 @@ example (p : Prop) (a b : nat) : a = b → p → p := by safe'
 example (a : nat) : (0 : ℕ) = succ a → a = a → false := sorry
 example (p : Prop) (a b c : nat) : [a, b, c] = [] → p := sorry
 
-example (a b c : nat) : succ (succ a) = succ (succ b) → c = c := by ssafe'
-example (p : Prop) (a b : nat) : a = b → b ≠ a → p := by strong_simp
+--example (a b c : nat) : succ (succ a) = succ (succ b) → c = c := by ssafe'
+--example (p : Prop) (a b : nat) : a = b → b ≠ a → p := by strong_simp
 example : (a ↔ b) → ((b ↔ a) ↔ (a ↔ b)) := by safe'
-example (a b c : nat) : b = c → (a = b ↔ c = a) := by ssafe'
+--example (a b c : nat) : b = c → (a = b ↔ c = a) := by ssafe'
 example : ¬¬¬¬¬¬¬¬a → ¬¬¬¬¬a → false := by safe'
 example (a b c : Prop) : a ∧ b ∧ c ↔ c ∧ b ∧ a := by safe'
 example (a b c : Prop) : a ∧ false ∧ c ↔ false := by safe'
 example (a b c : Prop) : a ∨ false ∨ b ↔ b ∨ a := by safe'
 example : a ∧ not a ↔ false := by safe'
 example : a ∧ b ∧ true → b ∧ a := by safe'
-example (A : Type) (a₁ a₂ : A) : a₁ = a₂ →
-  (λ (B : Type) (f : A → B), f a₁) = (λ (B : Type) (f : A → B), f a₂) := by strong_simp
-example (a : nat) : ¬ a = a → false := by strong_simp
+--example (A : Type) (a₁ a₂ : A) : a₁ = a₂ →
+--  (λ (B : Type) (f : A → B), f a₁) = (λ (B : Type) (f : A → B), f a₂) := by strong_simp
+--example (a : nat) : ¬ a = a → false := by strong_simp
 example (A : Type) (p : Prop) (a b c : A) : a = b → b ≠ a → p := sorry
 example (p q r s : Prop) : r ∧ s → p ∧ q → q ∧ p := by safe'
 example (p q : Prop) : p ∧ p ∧ q ∧ q → q ∧ p := by safe'

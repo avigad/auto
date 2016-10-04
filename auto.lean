@@ -53,9 +53,6 @@ universe uₗ
 declare_trace auto
 set_option trace.auto false
 
--- TODO: this is useful here; add it to list library?
-private definition forl {A B : Type} (l : list A) (f : A → B) : list B := map f l
-
 /- logic rules for the tableau prover -/
 
 theorem not_or_of_imp {A B : Prop} (H : A → B) : ¬ A ∨ B :=
@@ -138,7 +135,7 @@ namespace tactic
 
 /- utils -/
 
-meta definition collect_props : list expr → tactic (list expr)
+meta def collect_props : list expr → tactic (list expr)
 | []        := return []
 | (h :: hs) := do
   props   ← collect_props hs,
@@ -146,10 +143,10 @@ meta definition collect_props : list expr → tactic (list expr)
   htt     ← infer_type ht,
   (unify htt prop >> return (h :: props)) <|> return props
 
-meta definition unfold_all (ns : list name) : tactic unit :=
+meta def unfold_all (ns : list name) : tactic unit :=
 do unfold ns, local_context >>= collect_props >>= monad.mapM' (unfold_at ns)
 
-meta definition head_symbol : expr → name
+meta def head_symbol : expr → name
 | (const n a)      := n
 | (app e a)        := match (get_app_fn e) with
                       | (const n l) := n
@@ -158,9 +155,9 @@ meta definition head_symbol : expr → name
 | (pi a₁ a₂ a₃ a₄) := `pi
 | a                := `none
 
-private meta definition whnf_red : expr → tactic expr := whnf_core reducible
+private meta def whnf_red : expr → tactic expr := whnf_core reducible
 
-meta definition is_forall (e : expr) : tactic bool :=
+meta def is_forall (e : expr) : tactic bool :=
 if head_symbol e ≠ `pi then return ff
    else do
      et ← infer_type e,
@@ -169,7 +166,7 @@ if head_symbol e ≠ `pi then return ff
        dt ← infer_type (binding_domain e),
        if dt ≠ prop then return tt else return ff
 
-meta definition is_negation (e : expr) : tactic bool :=
+meta def is_negation (e : expr) : tactic bool :=
 do e' ← whnf_red e,
    if head_symbol e' = `not then return tt
    else if is_pi e' = tt then
@@ -179,17 +176,17 @@ do e' ← whnf_red e,
           (return ff))
    else return ff
 
-meta definition at_least_once (t : tactic unit) : tactic unit :=
+meta def at_least_once (t : tactic unit) : tactic unit :=
 t >> repeat t
 
 -- assert_fresh P infers the type T of P, creates a fresh name H, and
 --   asserts H : T
-meta definition assert_fresh (P : expr) : tactic unit :=
+meta def assert_fresh (P : expr) : tactic unit :=
 do n ← mk_fresh_name,
    t ← infer_type P,
    assertv n t P
 
-meta definition expr_with_type_to_string (h : expr) : tactic string :=
+meta def expr_with_type_to_string (h : expr) : tactic string :=
 do ht ← infer_type h,
    pph ← pp h,
    ppht ← pp ht,
@@ -198,36 +195,36 @@ do ht ← infer_type h,
 /- versions of the simplifier that call themselves recursively -/
 
 -- simp_add_prove_max_depth l d uses the simplifier as its own prover, recursing up to depth d
-meta definition simp_add_prove_max_depth (lemmas : list expr) : ℕ → tactic unit
+meta def simp_add_prove_max_depth (lemmas : list expr) : ℕ → tactic unit
 | 0        := failed
 | (succ d) := do l ← local_context >>= collect_props,
                  simplify_goal (simp_add_prove_max_depth d) (l ++ lemmas),
                  triv
 
-meta definition strong_simp_add (lemmas : list expr) : tactic unit :=
+meta def strong_simp_add (lemmas : list expr) : tactic unit :=
 do l ← local_context >>= collect_props,
    simplify_goal (simp_add_prove_max_depth lemmas 10) (l ++ lemmas),
    try triv
 
-meta definition strong_simp : tactic unit :=
+meta def strong_simp : tactic unit :=
 strong_simp_add []
 
-meta definition strong_simp_at_add (h : expr) (lemmas : list expr) : tactic unit :=
+meta def strong_simp_at_add (h : expr) (lemmas : list expr) : tactic unit :=
 do simp_core_at (simp_add_prove_max_depth lemmas 10) lemmas h
 
-meta definition strong_simp_at (h : expr) : tactic unit :=
+meta def strong_simp_at (h : expr) : tactic unit :=
 do strong_simp_at_add h []
 
 -- TODO: how to inline this?
-private meta definition strong_simp_hyps_add_aux (lemmas : list expr) : list expr → tactic unit
+private meta def strong_simp_hyps_add_aux (lemmas : list expr) : list expr → tactic unit
 | [] := skip
 | (h :: hs) := try (strong_simp_at_add h lemmas) >> strong_simp_hyps_add_aux hs
 
-meta definition strong_simp_hyps_add (lemmas : list expr) : tactic unit :=
+meta def strong_simp_hyps_add (lemmas : list expr) : tactic unit :=
 do l ← local_context,
    strong_simp_hyps_add_aux lemmas l
 
-meta definition strong_simp_hyps : tactic unit :=
+meta def strong_simp_hyps : tactic unit :=
 strong_simp_hyps_add []
 
 
@@ -236,15 +233,15 @@ strong_simp_hyps_add []
 -/
 
 -- show a trace message
-meta definition auto_trace (s : unit → string) : tactic unit :=
+meta def auto_trace (s : unit → string) : tactic unit :=
 if is_trace_enabled_for `auto = tt then trace (s ()) else skip
 
 -- a version where the string is in the tactic monad
-meta definition auto_traceM (s : unit → tactic string) : tactic unit :=
+meta def auto_traceM (s : unit → tactic string) : tactic unit :=
 if is_trace_enabled_for `auto = tt then s () >>= trace else skip
 
 -- trace a step, e.g. an application of a rule, and show the result
-meta definition auto_trace_step (tac : tactic unit) (s : unit → string) : tactic unit :=
+meta def auto_trace_step (tac : tactic unit) (s : unit → string) : tactic unit :=
 if is_trace_enabled_for `auto = tt then do
   trace (s ()),
   (tac >> trace ("result:") >> trace_state >> trace "-----") <|>
@@ -253,7 +250,7 @@ else
   tac
 
 -- a version where the string is in the tactic monad
-meta definition auto_trace_stepM (tac : tactic unit) (s : unit → tactic string) : tactic unit :=
+meta def auto_trace_stepM (tac : tactic unit) (s : unit → tactic string) : tactic unit :=
 if is_trace_enabled_for `auto = tt then do
   s () >>= trace,
   (tac >> trace ("result:") >> trace_state >> trace "-----") <|>
@@ -262,14 +259,14 @@ else
   tac
 
 -- this can be used to print a message after a tactic if it fails, e.g. a continuation.
-meta definition auto_trace_with_fail_message (tac : tactic unit) (s : unit → string) :
+meta def auto_trace_with_fail_message (tac : tactic unit) (s : unit → string) :
   tactic unit :=
 if is_trace_enabled_for `auto = tt then do
   tac <|> (trace (s ()) >> failed)
 else
   tac
 
-meta definition auto_trace_with_fail_messageM (tac : tactic unit) (s : unit → tactic string) :
+meta def auto_trace_with_fail_messageM (tac : tactic unit) (s : unit → tactic string) :
   tactic unit :=
 if is_trace_enabled_for `auto = tt then do
   tac <|> (s () >>= trace >> failed)
@@ -282,30 +279,30 @@ else
 -/
 
 -- we really want: e₁ and e₂ can be unified without instantiating metavariables
-meta definition unify_safe_core (t : transparency) (e₁ e₂ : expr) : tactic unit :=
+meta def unify_safe_core (t : transparency) (e₁ e₂ : expr) : tactic unit :=
 cond (has_meta_var e₁ || has_meta_var e₂) failed (unify_core t e₁ e₂)
 
-meta definition unify_safe (e₁ e₂ : expr) : tactic unit :=
+meta def unify_safe (e₁ e₂ : expr) : tactic unit :=
 unify_safe_core semireducible e₁ e₂
 
 -- we really want: try to apply e, without instantiation any metavariables in the goal
 -- maybe we also want the same for fapply?
-meta definition apply_safe_core (t : transparency) (all : bool) (insts : bool) (e : expr) :
+meta def apply_safe_core (t : transparency) (all : bool) (insts : bool) (e : expr) :
   tactic unit :=
 apply_core t all insts e
 
-meta definition apply_safe : expr → tactic unit :=
+meta def apply_safe : expr → tactic unit :=
 apply_safe_core semireducible ff tt
 
 /- a safe version of assumption -/
 
-meta definition find_same_type_safe (e : expr) (l : list expr) : tactic expr :=
-first $ forl l (λ h, do ht ← infer_type h, unify_safe e ht >> return h)
+meta def find_same_type_safe (e : expr) (l : list expr) : tactic expr :=
+first $ list.for l (λ h, do ht ← infer_type h, unify_safe e ht >> return h)
 
-meta definition find_hyp_with_type (e : expr) : tactic expr :=
+meta def find_hyp_with_type (e : expr) : tactic expr :=
 local_context >>= find_same_type_safe e
 
-meta definition assumption_safe : tactic unit :=
+meta def assumption_safe : tactic unit :=
 do goal ← target,
    h ← find_hyp_with_type goal,
    auto_trace_stepM (exact h)
@@ -314,7 +311,7 @@ do goal ← target,
 
 /- a safe version of contradiction -/
 
-private meta definition contra_A_not_A_safe : list expr → list expr → tactic unit
+private meta def contra_A_not_A_safe : list expr → list expr → tactic unit
 | []         Hs := failed
 | (H1 :: Rs) Hs :=
   do t_0 ← infer_type H1,
@@ -329,7 +326,7 @@ private meta definition contra_A_not_A_safe : list expr → list expr → tactic
                     return ("using contradiction, " ++ s2 ++ ", " ++ s1)))
          <|> contra_A_not_A_safe Rs Hs
 
-meta definition contradiction_safe : tactic unit :=
+meta def contradiction_safe : tactic unit :=
 do ctx ← local_context, contra_A_not_A_safe ctx ctx
 
 
@@ -371,46 +368,46 @@ for or.
 structure rule_data (A : Type) :=
 (key : name) (num_subgoals : ℕ) (classical : bool) (intuit : bool) (tac : A)
 
-meta definition rule_key {A : Type} : rule_data A → name := rule_data.key
+meta def rule_key {A : Type} : rule_data A → name := rule_data.key
 
-meta definition intro_rule : Type  := rule_data (tactic unit)
-meta definition elim_rule : Type   := rule_data (expr → tactic unit)
-meta definition bintro_rule : Type := rule_data (tactic unit → tactic unit)
-meta definition belim_rule : Type  := rule_data (expr → tactic unit → tactic unit)
+meta def intro_rule : Type  := rule_data (tactic unit)
+meta def elim_rule : Type   := rule_data (expr → tactic unit)
+meta def bintro_rule : Type := rule_data (tactic unit → tactic unit)
+meta def belim_rule : Type  := rule_data (expr → tactic unit → tactic unit)
 
-meta definition rule_database (A : Type) : Type := rb_lmap name (rule_data A)
+meta def rule_database (A : Type) : Type := rb_lmap name (rule_data A)
 
-meta definition intro_rule_database : Type  := rb_lmap name intro_rule
-meta definition elim_rule_database : Type   := rb_lmap name elim_rule
-meta definition nelim_rule_database : Type  := rb_lmap name elim_rule
-meta definition bintro_rule_database : Type := rb_lmap name bintro_rule
-meta definition belim_rule_database : Type  := rb_lmap name belim_rule
-meta definition bnelim_rule_database : Type := rb_lmap name belim_rule
+meta def intro_rule_database : Type  := rb_lmap name intro_rule
+meta def elim_rule_database : Type   := rb_lmap name elim_rule
+meta def nelim_rule_database : Type  := rb_lmap name elim_rule
+meta def bintro_rule_database : Type := rb_lmap name bintro_rule
+meta def belim_rule_database : Type  := rb_lmap name belim_rule
+meta def bnelim_rule_database : Type := rb_lmap name belim_rule
 
-meta definition mk_rule_database (A : Type) : rule_database A := rb_lmap.mk _ _
+meta def mk_rule_database (A : Type) : rule_database A := rb_lmap.mk _ _
 
-meta definition insert_rule {A : Type} (db : rule_database A) (r : rule_data A) :
+meta def insert_rule {A : Type} (db : rule_database A) (r : rule_data A) :
   rule_database A :=
 rb_lmap.insert db (rule_key r) r
 
-meta definition insert_rule_list {A : Type} (db : rule_database A) :
+meta def insert_rule_list {A : Type} (db : rule_database A) :
   list (rule_data A) → rule_database A
 | []        := db
 | (r :: rs) := insert_rule (insert_rule_list rs) r
 
-meta definition initialize_rule_database {A : Type} (l : list (rule_data A)) : rule_database A :=
+meta def initialize_rule_database {A : Type} (l : list (rule_data A)) : rule_database A :=
 insert_rule_list (mk_rule_database A) l
 
-meta definition find_rules {A : Type} (db : rule_database A) (key : name) : list (rule_data A) :=
+meta def find_rules {A : Type} (db : rule_database A) (key : name) : list (rule_data A) :=
 rb_lmap.find db key
 
 
 /- intro rules -/
 
-meta definition apply_intro_rule (db : intro_rule_database) (max_subgoals : ℕ) (classical : bool) :
+meta def apply_intro_rule (db : intro_rule_database) (max_subgoals : ℕ) (classical : bool) :
   tactic unit :=
 do goal ← target >>= whnf_red,
-   first $ forl (find_rules db (head_symbol goal))
+   first $ list.for (find_rules db (head_symbol goal))
      (λ r, if rule_data.num_subgoals r ≤ max_subgoals ∧
                  cond classical (rule_data.classical r) (rule_data.intuit r) = tt then
              rule_data.tac r
@@ -418,40 +415,40 @@ do goal ← target >>= whnf_red,
 
 /- procedures for building particular intro rules -/
 
-meta definition deploy_intro (op : name) : tactic unit :=
+meta def deploy_intro (op : name) : tactic unit :=
 auto_trace_step (mk_const op >>= apply)
                 (λ u, "applying introduction " ++ to_string op)
 
-meta definition deploy_intro_then_intros (op : name) : tactic unit :=
+meta def deploy_intro_then_intros (op : name) : tactic unit :=
 auto_trace_step (mk_const op >>= apply >> intros >> return ())
                 (λ u, "applying introduction " ++ to_string op)
 
 
 /- elim rules -/
 
-meta definition apply_elim_rule_at (edb : elim_rule_database) (nedb : nelim_rule_database)
+meta def apply_elim_rule_at (edb : elim_rule_database) (nedb : nelim_rule_database)
     (h : expr) (max_subgoals : ℕ) (classical : bool) :
   tactic unit :=
 do ht ← infer_type h >>= whnf_red,
-   (first $ forl (find_rules edb (head_symbol ht))
+   (first $ list.for (find_rules edb (head_symbol ht))
      (λ r, if rule_data.num_subgoals r ≤ max_subgoals ∧
                 cond classical (rule_data.classical r) (rule_data.intuit r) = tt then
              rule_data.tac r h
            else failed)) <|>
    if head_symbol ht = `not then do
       unneg ← return (app_arg ht) >>= whnf_red,
-      first $ forl (find_rules nedb (head_symbol (unneg)))
+      first $ list.for (find_rules nedb (head_symbol (unneg)))
             (λ r, if rule_data.num_subgoals r ≤ max_subgoals ∧
                       cond classical (rule_data.classical r) (rule_data.intuit r) = tt then
                     rule_data.tac r h
                   else failed)
    else failed
 
-meta definition apply_elim_rule (edb : elim_rule_database) (nedb : nelim_rule_database)
+meta def apply_elim_rule (edb : elim_rule_database) (nedb : nelim_rule_database)
     (max_subgoals : ℕ) (classical : bool) :
   tactic unit :=
 do hs ← local_context >>= collect_props,
-   first $ forl hs (λ h, apply_elim_rule_at edb nedb h max_subgoals classical)
+   first $ list.for hs (λ h, apply_elim_rule_at edb nedb h max_subgoals classical)
 
 /- procedures for building particular elim rules
 
@@ -464,14 +461,14 @@ do hs ← local_context >>= collect_props,
      It is safe even if the hypothesis has variables.
 -/
 
-private definition elim_instance_mapp_args (motive major : ℕ) (emotive emajor : expr) :
+private meta def elim_instance_mapp_args (motive major : ℕ) (emotive emajor : expr) :
   list (option expr) :=
 let diff := major - motive in
 nat.rec_on major []
   (λ n l, if n = diff then some emotive :: l
           else if n = 0 then some emajor :: l else none :: l)
 
-meta definition deploy_elim_at (op : name) (motive : ℕ) (major : ℕ) : expr → tactic unit :=
+meta def deploy_elim_at (op : name) (motive : ℕ) (major : ℕ) : expr → tactic unit :=
 λ h : expr,
 do auto_trace_stepM
      (do goal ← target,
@@ -483,25 +480,25 @@ do auto_trace_stepM
               return ("applying elimination " ++ to_string op ++ " at " ++ s))
 
 -- only apply the elim rule if there are no metavars
-meta definition deploy_elim_at_safe (op : name) (motive : ℕ) (major : ℕ) :
+meta def deploy_elim_at_safe (op : name) (motive : ℕ) (major : ℕ) :
   expr → tactic unit :=
 λ h : expr,
 do ht ← infer_type h,
    when (has_meta_var ht = tt) failed,
    deploy_elim_at op motive major h
 
-private definition dest_instance_mapp_args (prem : ℕ) (hyp : expr) : 
+private meta def dest_instance_mapp_args (prem : ℕ) (hyp : expr) :
   list (option expr) :=
 nat.rec_on (prem - 1) [some hyp] (λ n l, none :: l)
 
-meta definition deploy_dest_at (op : name) (prem : ℕ) : expr → tactic unit :=
+meta def deploy_dest_at (op : name) (prem : ℕ) : expr → tactic unit :=
 λ h : expr,
 auto_trace_stepM
   (mk_mapp op (dest_instance_mapp_args prem h) >>= assert_fresh >> clear h)
   (λ u, do s ← expr_with_type_to_string h,
            return ("applying destructor " ++ to_string op ++ " at " ++ s))
 
-meta definition deploy_dests_at (ops : list (name × ℕ)) : expr → tactic unit :=
+meta def deploy_dests_at (ops : list (name × ℕ)) : expr → tactic unit :=
 λ h : expr,
 auto_trace_stepM
   (monad.forM' ops (λ p, mk_mapp (p.1) (dest_instance_mapp_args (p.2) h) >>= assert_fresh) >>
@@ -509,20 +506,20 @@ auto_trace_stepM
   (λ u, do s ← expr_with_type_to_string h,
            return ("applying destructors " ++ (map prod.fst ops)^.to_string ++ " at " ++ s))
 
-meta definition deploy_clear_at : expr → tactic unit :=
+meta def deploy_clear_at : expr → tactic unit :=
 λ h : expr,
 auto_trace_stepM (clear h)
   (λ u, do s ← expr_with_type_to_string h,
            return ("clearing " ++ s))
 
 -- convert (... h : ¬ A ... ==> B) to (... hn : ¬ B ... ==> A), where h' has a fresh name
-meta definition do_classical_swap (h : expr) : tactic expr :=
+meta def do_classical_swap (h : expr) : tactic expr :=
 do goal ← target,
    mk_mapp `classical_swap [none, some goal, some h] >>= apply,
    clear h,
    mk_fresh_name >>= intro
 
-meta definition classical_apply_intro_rule_at (db : intro_rule_database) (h : expr)
+meta def classical_apply_intro_rule_at (db : intro_rule_database) (h : expr)
     (max_subgoals : ℕ) (classical : bool) :
   tactic unit :=
 do n ← mk_fresh_name,
@@ -533,11 +530,11 @@ do n ← mk_fresh_name,
 
 /- backtracking intro rules -/
 
-meta definition apply_bintro_rule (db : bintro_rule_database) (max_subgoals : ℕ)
+meta def apply_bintro_rule (db : bintro_rule_database) (max_subgoals : ℕ)
     (classical : bool) (cont : tactic unit) :
   tactic unit :=
 do goal ← target >>= whnf_red,
-   first $ forl (find_rules db (head_symbol goal))
+   first $ list.for (find_rules db (head_symbol goal))
      (λ r, if rule_data.num_subgoals r ≤ max_subgoals ∧
                 cond classical (rule_data.classical r) (rule_data.intuit r) = tt then
              rule_data.tac r cont
@@ -545,8 +542,8 @@ do goal ← target >>= whnf_red,
 
 /- procedure for building particular bintro rules -/
 
-meta definition deploy_bintro_choices (l : list (tactic unit)) : tactic unit → tactic unit :=
-take cont, first $ forl l (λ t, do
+meta def deploy_bintro_choices (l : list (tactic unit)) : tactic unit → tactic unit :=
+take cont, first $ list.for l (λ t, do
   auto_trace (λ u, "setting backtracking point for intro rule"),
   t,
   auto_trace_with_fail_message cont (λ u, "backtracking intro rule"))
@@ -554,44 +551,44 @@ take cont, first $ forl l (λ t, do
 
 /- backtracking elim rules -/
 
-meta definition classical_apply_bintro_rule_at (db : bintro_rule_database) (h : expr)
+meta def classical_apply_bintro_rule_at (db : bintro_rule_database) (h : expr)
     (max_subgoals : ℕ) (classical : bool) (cont : tactic unit) :
   tactic unit :=
 do n ← mk_fresh_name,
    negated_concl ← do_classical_swap h,
    apply_bintro_rule db max_subgoals classical (intros >> do_classical_swap negated_concl >> cont)
 
-meta definition apply_belim_rule_at (bedb : belim_rule_database) (bnedb : belim_rule_database)
+meta def apply_belim_rule_at (bedb : belim_rule_database) (bnedb : belim_rule_database)
     (h : expr) (max_subgoals : ℕ) (classical : bool) (cont : tactic unit) :
   tactic unit :=
 do ht ← infer_type h >>= whnf_red,
-   (first $ forl (find_rules bedb (head_symbol ht))
+   (first $ list.for (find_rules bedb (head_symbol ht))
      (λ r, if rule_data.num_subgoals r ≤ max_subgoals ∧
                 cond classical (rule_data.classical r) (rule_data.intuit r) = tt then
              rule_data.tac r h cont
            else failed)) <|>
    (monad.condM (is_negation ht)
      (do dt ← infer_type (binding_domain h),
-         first $ forl (find_rules bnedb (head_symbol dt))
+         first $ list.for (find_rules bnedb (head_symbol dt))
             (λ r, if rule_data.num_subgoals r ≤ max_subgoals ∧
                       cond classical (rule_data.classical r) (rule_data.intuit r) = tt then
                     rule_data.tac r h cont
                   else failed))
      failed)
 
-meta definition apply_belim_rule (bedb : belim_rule_database) (bnedb : belim_rule_database)
+meta def apply_belim_rule (bedb : belim_rule_database) (bnedb : belim_rule_database)
     (max_subgoals : ℕ) (classical : bool) (cont : tactic unit) :
   tactic unit :=
 do hs ← local_context >>= collect_props,
-   first (forl hs (λ h, apply_belim_rule_at bedb bnedb h max_subgoals classical cont))
+   first (list.for hs (λ h, apply_belim_rule_at bedb bnedb h max_subgoals classical cont))
 
 
 /- procedure for building particular belim rules -/
 
-meta definition deploy_belim_choices (l : list (expr → tactic unit)) :
+meta def deploy_belim_choices (l : list (expr → tactic unit)) :
   expr → tactic unit → tactic unit :=
 take h cont,
-  (first $ forl l (λ t, do
+  (first $ list.for l (λ t, do
     auto_traceM (λ u, do s ← expr_with_type_to_string h,
                          return ("setting backtracking point for elim rule at " ++ s)),
     t h,
@@ -602,13 +599,13 @@ take h cont,
 
 /- try to do a subst or injection on a hypothesis -/
 
-meta definition has_eq_type (h : expr) : tactic bool :=
+meta def has_eq_type (h : expr) : tactic bool :=
 do htype ← infer_type h >>= whnf_red,
    return (match (expr.is_eq htype) with (some _) := tt | none := ff end)
 
-meta definition try_subst_and_injection_on_hyps : tactic unit :=
+meta def try_subst_and_injection_on_hyps : tactic unit :=
 do ctx ← local_context,
-   first $ forl ctx (λ h, do
+   first $ list.for ctx (λ h, do
      b ← has_eq_type h,
      when (b = ff) failed,
      (do subst h,
@@ -629,85 +626,85 @@ do ctx ← local_context,
 
 /- standard introduction rules -/
 
-meta definition true_intro_rule : intro_rule :=
+meta def true_intro_rule : intro_rule :=
 { key := ``true, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_intro ``true.intro }
 
-meta definition and_intro_rule : intro_rule :=
+meta def and_intro_rule : intro_rule :=
 { key := ``and, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_intro ``and.intro }
 
-meta definition or_classical_intro_rule : intro_rule :=
+meta def or_classical_intro_rule : intro_rule :=
 { key := ``or, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_intro_then_intros ``or_classical_intro }
 
 -- TODO: eliminate trick to get the recursive call
-private meta definition auto_intros_aux : unit → tactic unit
+private meta def auto_intros_aux : unit → tactic unit
 | unit.star :=
   do goal ← target >>= whnf_red,
      when (head_symbol goal = `pi ∨ head_symbol goal = `not)
        (do n ← mk_fresh_name, intro n, auto_intros_aux unit.star)
 
-meta definition auto_intros : tactic unit :=
+meta def auto_intros : tactic unit :=
 auto_intros_aux unit.star
 
-meta definition deploy_intros : tactic unit :=
+meta def deploy_intros : tactic unit :=
 auto_trace_step auto_intros (λ u, "applying intros")
 
-meta definition Pi_intro_rule : intro_rule :=
+meta def Pi_intro_rule : intro_rule :=
 { key := `pi, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_intros }
 
-meta definition not_intro_rule : intro_rule :=
+meta def not_intro_rule : intro_rule :=
 { key := ``not, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_intros }
 
-meta definition iff_intro_rule : intro_rule :=
+meta def iff_intro_rule : intro_rule :=
 { key := ``iff, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_intro ``iff.intro }
 
-meta definition standard_intro_rules : list intro_rule :=
+meta def standard_intro_rules : list intro_rule :=
 [true_intro_rule, and_intro_rule, or_classical_intro_rule, Pi_intro_rule, not_intro_rule,
   iff_intro_rule]
 
 /- standard backtracking intro rules -/
 
-meta definition or_intuit_bintro_rule : bintro_rule :=
+meta def or_intuit_bintro_rule : bintro_rule :=
 { key := ``or, num_subgoals := 2, classical := ff, intuit := tt,
     tac := deploy_bintro_choices [deploy_intro ``or.inl, deploy_intro ``or.inr] }
 
-meta definition exists_bintro_rule : bintro_rule :=
+meta def exists_bintro_rule : bintro_rule :=
 { key := ``Exists, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_bintro_choices [deploy_intro ``exists.intro, deploy_intro ``false.elim] }
 
-meta definition standard_bintro_rules : list bintro_rule :=
+meta def standard_bintro_rules : list bintro_rule :=
 [or_intuit_bintro_rule, exists_bintro_rule]
 
 /- standard elimination rules -/
 
-meta definition and_elim_rule : elim_rule :=
+meta def and_elim_rule : elim_rule :=
 { key := ``and, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dests_at [(``and.left, 3), (``and.right, 3)] }
 
-meta definition iff_elim_rule : elim_rule :=
+meta def iff_elim_rule : elim_rule :=
 { key := ``iff, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dests_at [(``iff.mp, 3), (``iff.mpr, 3)] }
 
-meta definition or_elim_rule : elim_rule :=
+meta def or_elim_rule : elim_rule :=
 { key := ``or, num_subgoals := 2, classical := tt, intuit := tt,
     tac := deploy_elim_at_safe ``or.elim 3 4 }
 
-meta definition false_elim_rule : elim_rule :=
+meta def false_elim_rule : elim_rule :=
 { key := ``false, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_elim_at ``false.elim 1 2 }
 
-meta definition exists_elim_rule : elim_rule :=
+meta def exists_elim_rule : elim_rule :=
 { key := ``Exists, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_elim_at_safe ``exists.elim 3 4 }
 
 -- given a hypothesis h with type ht, an implication, try to find something
 -- in the context to apply it to
-meta definition try_modus_ponens_at (h : expr) (ht : expr) : tactic unit :=
+meta def try_modus_ponens_at (h : expr) (ht : expr) : tactic unit :=
 do h' ← find_hyp_with_type (binding_domain ht),
    auto_trace_stepM
      (assert_fresh (expr.app h h') >> clear h)
@@ -719,7 +716,7 @@ do h' ← find_hyp_with_type (binding_domain ht),
 --   if B = false, replace by h' : ¬ A
 --   if h' : A is in the context, apply h to h'
 --   if A if of the form C ∨ D, replace with C → B, D → B
-meta definition deploy_imp_elim_at (h : expr) : tactic unit :=
+meta def deploy_imp_elim_at (h : expr) : tactic unit :=
 do ht ← infer_type h >>= whnf_red,
    dt ← infer_type (binding_domain ht),
    if dt ≠ prop then failed
@@ -733,11 +730,11 @@ do ht ← infer_type h >>= whnf_red,
                    deploy_dests_at [(``imp_of_or_imp_left, 4), (``imp_of_or_imp_right, 4)] h
                 else failed)
 
-meta definition imp_elim_rule : elim_rule :=
+meta def imp_elim_rule : elim_rule :=
 { key := `pi, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_imp_elim_at }
 
-meta definition deploy_imp_classical_elim_at (h : expr) : tactic unit :=
+meta def deploy_imp_classical_elim_at (h : expr) : tactic unit :=
 do ht ← infer_type h >>= whnf_red,
    dt ← infer_type (binding_domain ht),
    if dt ≠ prop then failed
@@ -745,12 +742,12 @@ do ht ← infer_type h >>= whnf_red,
      failed
      (deploy_elim_at ``imp_classical_elim 3 4 h)
 
-meta definition imp_classical_elim_rule : elim_rule :=
+meta def imp_classical_elim_rule : elim_rule :=
 { key := `pi, num_subgoals := 2, classical := tt, intuit := ff,
     tac := deploy_imp_classical_elim_at }
 
 -- try to find a contradiction
-meta definition deploy_not_elim_at (h : expr) : tactic unit :=
+meta def deploy_not_elim_at (h : expr) : tactic unit :=
 do ht ← infer_type h,
    h' ← find_hyp_with_type (app_arg ht),
    goal ← target,
@@ -761,86 +758,86 @@ do ht ← infer_type h,
               s₂ ← expr_with_type_to_string h,
               return ("using contradiction, " ++ s₁ ++ " and " ++ s₂))
 
-meta definition not_elim_rule : elim_rule :=
+meta def not_elim_rule : elim_rule :=
 { key := `not, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_not_elim_at }
 
-meta definition standard_elim_rules : list elim_rule :=
+meta def standard_elim_rules : list elim_rule :=
 [and_elim_rule, or_elim_rule, false_elim_rule, exists_elim_rule, imp_elim_rule,
   imp_classical_elim_rule, not_elim_rule, iff_elim_rule]
 
 /- elimination rules for negated formulas -/
 
-meta definition not_true_elim_rule : elim_rule :=
+meta def not_true_elim_rule : elim_rule :=
 { key := ``true, num_subgoals := 0, classical := tt, intuit := tt,
     tac := deploy_elim_at ``not_true_elim 1 2 }
 
-meta definition not_or_elim_rule : elim_rule :=
+meta def not_or_elim_rule : elim_rule :=
 { key := ``or, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dests_at [(``not_of_not_or_left, 3), (``not_of_not_or_right, 3)] }
 
-meta definition not_and_elim_rule : elim_rule :=
+meta def not_and_elim_rule : elim_rule :=
 { key := ``and, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_dest_at ``not_or_not_of_not_and 3 }
 
-meta definition not_imp_elim_rule : elim_rule :=
+meta def not_imp_elim_rule : elim_rule :=
 { key := `pi, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_dests_at [(``of_not_imp, 3), (``not_of_not_imp, 3)] }
 
-meta definition not_not_elim_rule : elim_rule :=
+meta def not_not_elim_rule : elim_rule :=
 { key := ``not, num_subgoals := 1, classical := tt, intuit := ff,
     tac := deploy_dest_at ``not_not_dest 2 }
 
-meta definition not_not_not_elim_rule : elim_rule :=
+meta def not_not_not_elim_rule : elim_rule :=
 { key := ``not, num_subgoals := 1, classical := ff, intuit := tt,
     tac := deploy_dest_at ``not_not_not_dest 2 }
 
-meta definition not_iff_elim_rule : elim_rule :=
+meta def not_iff_elim_rule : elim_rule :=
 { key := ``iff, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dest_at ``not_iff 3 }
 
-meta definition not_exists_elim_rule : elim_rule :=
+meta def not_exists_elim_rule : elim_rule :=
 { key := ``Exists, num_subgoals := 1, classical := tt, intuit := tt,
     tac := deploy_dest_at ``forall_not_of_not_exists 3 }
 
-meta definition standard_nelim_rules : list elim_rule :=
+meta def standard_nelim_rules : list elim_rule :=
 [not_true_elim_rule, not_or_elim_rule, not_and_elim_rule, not_imp_elim_rule,
  not_not_elim_rule, not_not_not_elim_rule, not_iff_elim_rule, not_exists_elim_rule]
 
 /- standard backtracking elim rules -/
 
-meta definition deploy_imp_intuit_belim_at (h : expr) (cont : tactic unit) : tactic unit :=
+meta def deploy_imp_intuit_belim_at (h : expr) (cont : tactic unit) : tactic unit :=
 do ht ← infer_type h >>= whnf_red,
    dt ← infer_type (binding_domain ht),
    if dt ≠ prop then failed
    else deploy_belim_choices [deploy_elim_at ``imp_intuit_elim 3 4, deploy_clear_at] h cont
 
-meta definition imp_intuit_belim_rule : belim_rule :=
+meta def imp_intuit_belim_rule : belim_rule :=
 { key := `pi, num_subgoals := 2, classical := ff, intuit := tt,
     tac := deploy_imp_intuit_belim_at }
 
---meta definition imp_classical_belim_rule :=
+--meta def imp_classical_belim_rule :=
 --{ key := `pi, num_subgoals := 2, classical := tt, intuit := ff,
 --    tac := deploy_belim_choices [deploy_clear_at, deploy_imp_classical_elim_at] }
 
-meta definition or_belim_rule : belim_rule :=
+meta def or_belim_rule : belim_rule :=
 { key := `or, num_subgoals := 2, classical := ff, intuit := tt,
     tac := deploy_belim_choices [deploy_clear_at, deploy_elim_at ``or.elim 3 4] }
 
-meta definition standard_belim_rules : list belim_rule :=
+meta def standard_belim_rules : list belim_rule :=
 [imp_intuit_belim_rule, or_belim_rule]
 
 /- standard backtracking negated elim rules -/
 
-meta definition standard_bnelim_rules : list belim_rule := []
+meta def standard_bnelim_rules : list belim_rule := []
 
 
 /- backtracking assumption tactic -/
 
-meta definition try_assumptions (cont : tactic unit) :=
+meta def try_assumptions (cont : tactic unit) :=
 do ctx ← local_context,
    goal ← target,
-   first $ forl ctx
+   first $ list.for ctx
      (λ h, do ht ← infer_type h,
               unify ht goal,
               auto_trace_stepM (exact h)
@@ -850,13 +847,13 @@ do ctx ← local_context,
                   (λ u, do s ← expr_with_type_to_string h,
                            return ("backtracking assumption " ++ s)))
 
-meta definition try_contradictions (cont : tactic unit) :=
+meta def try_contradictions (cont : tactic unit) :=
 do ctx ← local_context,
    goal ← target,
-   first $ forl ctx (λ h, do
+   first $ list.for ctx (λ h, do
      ht ← infer_type h,
      unneg_ht ← match_not ht,
-     first $ forl ctx (λ h', do
+     first $ list.for ctx (λ h', do
        ht' ← infer_type h',
        unify ht' unneg_ht,
        t ← mk_app ``absurd [goal, h', h],
@@ -872,12 +869,12 @@ do ctx ← local_context,
 
 /- instantiating quantifiers in the backtracking search -/
 
-meta definition has_forall_type (h : expr) : tactic bool :=
+meta def has_forall_type (h : expr) : tactic bool :=
 do ht ← infer_type h,
    is_forall ht
 
 -- TODO: eliminate
-meta definition apply_to_metavars_while_universal_aux : unit → expr → tactic expr
+meta def apply_to_metavars_while_universal_aux : unit → expr → tactic expr
 | unit.star h :=
 do ht ← infer_type h,
    if head_symbol ht ≠ `pi then return h
@@ -891,10 +888,10 @@ do ht ← infer_type h,
          v ← mk_meta_var (binding_domain ht),
          apply_to_metavars_while_universal_aux unit.star (expr.app h v)
 
-meta definition apply_to_metavars_while_universal (h : expr) : tactic expr :=
+meta def apply_to_metavars_while_universal (h : expr) : tactic expr :=
 apply_to_metavars_while_universal_aux unit.star h
 
-meta definition try_instantiate_quantifiers (cont : tactic unit) : tactic unit :=
+meta def try_instantiate_quantifiers (cont : tactic unit) : tactic unit :=
 do hs ← (local_context >>= monad.filterM has_forall_type),
    gt ← target,
    when (hs = []/- ∧ head_symbol gt ≠ `Exists-/) failed,
@@ -920,7 +917,7 @@ do hs ← (local_context >>= monad.filterM has_forall_type),
 -/
 
 -- perform safe rules that do not split the goal
-meta definition clarify_core (classical : bool) (use_simp : bool)
+meta def clarify_core (classical : bool) (use_simp : bool)
     (idb : intro_rule_database) (edb : elim_rule_database) (nedb : nelim_rule_database)
     (simp_lemmas : list expr) :
   tactic unit :=
@@ -936,7 +933,7 @@ do repeat (apply_intro_rule idb 1 classical),
 
 -- perform safe rules
 -- TODO: fix recursion
-meta definition safe_core (classical : bool) (use_simp : bool)
+meta def safe_core (classical : bool) (use_simp : bool)
     (idb : intro_rule_database) (edb : elim_rule_database) (nedb : nelim_rule_database)
     (simp_lemmas : list expr) :
   unit → tactic unit
@@ -962,7 +959,7 @@ do clarify_core classical use_simp idb edb nedb simp_lemmas,
 -/
 
 -- TODO: fix recursion
-meta definition force_all_core_aux (classical : bool) (use_simp : bool)
+meta def force_all_core_aux (classical : bool) (use_simp : bool)
     (idb : intro_rule_database) (edb : elim_rule_database) (nedb : elim_rule_database)
     (bidb : bintro_rule_database) (bedb : belim_rule_database) (bnedb : belim_rule_database)
     (simp_lemmas : list expr)
@@ -993,14 +990,14 @@ do n ← num_goals,
    else do
      process_goals_with_backtracking preprocessed_goals
 
-meta definition final_check_for_metavariables (g : expr) : tactic unit :=
+meta def final_check_for_metavariables (g : expr) : tactic unit :=
 do result ← instantiate_mvars g,
    monad.whenb (has_meta_var result)
    (when_tracing `auto (trace_state >> trace "result has metavariables:" >> trace result) >>
      failed)
 
 -- the main tableaux prover: acts on one goal, makes sure there are no metavariables at the end
-meta definition force_core (classical : bool) (use_simp : bool)
+meta def force_core (classical : bool) (use_simp : bool)
     (idb : intro_rule_database) (edb : elim_rule_database) (nedb : elim_rule_database)
     (bidb : bintro_rule_database) (bedb : belim_rule_database) (bnedb : belim_rule_database)
     (simp_lemmas : list expr) :
@@ -1019,7 +1016,7 @@ do auto_trace_step skip (λ u, ">>> entering force"),
 /- front ends -/
 
 -- applies to first goal, never splits it, applies only safe rules, always succeeds
-meta definition clarify (classical : bool) (use_simp : bool)
+meta def clarify (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
@@ -1029,7 +1026,7 @@ let idb := initialize_rule_database (standard_intro_rules ++ irules),
 clarify_core classical use_simp idb edb nedb simp_lemmas
 
 -- applies to first goal, applies only safe rules, always succeeds
-meta definition safe (classical : bool) (use_simp : bool)
+meta def safe (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
@@ -1039,14 +1036,14 @@ let idb := initialize_rule_database (standard_intro_rules ++ irules),
 safe_core classical use_simp idb edb nedb simp_lemmas unit.star
 
 -- applies safe to all goals
-meta definition safe_all (classical : bool) (use_simp : bool)
+meta def safe_all (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (simp_lemmas : list expr) :
   tactic unit :=
 all_goals (safe classical use_simp irules erules nerules simp_lemmas)
 
 -- applies to first goal, fails if it does not solve it
-meta definition force (classical : bool) (use_simp : bool)
+meta def force (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (birules : list bintro_rule) (berules : list belim_rule) (bnerules : list belim_rule)
     (simp_lemmas : list expr) :
@@ -1060,7 +1057,7 @@ let idb := initialize_rule_database (standard_intro_rules ++ irules),
 force_core classical use_simp idb edb nedb bidb bedb bnedb simp_lemmas
 
 -- applies to all goals, always succeeds
-meta definition auto (classical : bool) (use_simp : bool)
+meta def auto (classical : bool) (use_simp : bool)
     (irules : list intro_rule) (erules : list elim_rule) (nerules : list elim_rule)
     (birules : list bintro_rule) (berules : list belim_rule) (bnerules : list belim_rule)
     (simp_lemmas : list expr) :
@@ -1072,22 +1069,22 @@ all_goals
 
 /- for testing -/
 
-meta definition clarify' : tactic unit := clarify tt ff [] [] [] []
+meta def clarify' : tactic unit := clarify tt ff [] [] [] []
 
-meta definition safe' : tactic unit := safe tt ff [] [] [] []
+meta def safe' : tactic unit := safe tt ff [] [] [] []
 
-meta definition ssafe' : tactic unit := safe tt tt [] [] [] [] -- with simplification
+meta def ssafe' : tactic unit := safe tt tt [] [] [] [] -- with simplification
 
-meta definition force' : tactic unit := force tt ff [] [] [] [] [] [] []
+meta def force' : tactic unit := force tt ff [] [] [] [] [] [] []
 
-meta definition sforce' : tactic unit := force tt tt [] [] [] [] [] [] []
+meta def sforce' : tactic unit := force tt tt [] [] [] [] [] [] []
 
-meta definition auto' : tactic unit := auto tt ff [] [] [] [] [] [] []
+meta def auto' : tactic unit := auto tt ff [] [] [] [] [] [] []
 
-meta definition sauto' : tactic unit := auto tt tt [] [] [] [] [] [] []
+meta def sauto' : tactic unit := auto tt tt [] [] [] [] [] [] []
 
-meta definition iauto' : tactic unit := auto ff ff [] [] [] [] [] [] []
+meta def iauto' : tactic unit := auto ff ff [] [] [] [] [] [] []
 
-meta definition isauto' : tactic unit := auto ff tt [] [] [] [] [] [] []
+meta def isauto' : tactic unit := auto ff tt [] [] [] [] [] [] []
 
 end tactic
